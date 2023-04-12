@@ -1,0 +1,45 @@
+<?xml version="1.0" encoding="UTF-8"?>
+
+<mule xmlns:os="http://www.mulesoft.org/schema/mule/os" xmlns:jms="http://www.mulesoft.org/schema/mule/jms"
+	xmlns:http="http://www.mulesoft.org/schema/mule/http"
+	xmlns="http://www.mulesoft.org/schema/mule/core" xmlns:doc="http://www.mulesoft.org/schema/mule/documentation" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="http://www.mulesoft.org/schema/mule/core http://www.mulesoft.org/schema/mule/core/current/mule.xsd
+http://www.mulesoft.org/schema/mule/http http://www.mulesoft.org/schema/mule/http/current/mule-http.xsd
+http://www.mulesoft.org/schema/mule/jms http://www.mulesoft.org/schema/mule/jms/current/mule-jms.xsd
+http://www.mulesoft.org/schema/mule/os http://www.mulesoft.org/schema/mule/os/current/mule-os.xsd">
+	<os:object-store name="Object_store" doc:name="Object store" doc:id="b409af50-2587-43ba-9a17-a1107363b592" maxEntries="100" entryTtl="1" entryTtlUnit="DAYS" />
+	<flow name="guarantee-delivery-2Flow" doc:id="b7bfd995-9685-4266-9d81-50af13ef9e38" >
+		<http:listener doc:name="Listener" doc:id="95ff3122-0648-4fc2-bc40-d58d5b131149" config-ref="HTTP_Listener_config" path="/gd"/>
+		<jms:publish doc:name="Publish" doc:id="ba981d18-17cd-4692-bf07-72425489e090" config-ref="JMS_Config" destination="gd"/>
+	</flow>
+	<flow name="guarantee-delivery-2Flow2" doc:id="7f7a98ca-0ac6-42f2-9df0-34b486fc4a4c" >
+		<http:listener doc:name="Listener" doc:id="cd8893dc-e243-4cc4-ba91-75918127bcfb" config-ref="HTTP_Listener_config" path="/hgd"/>
+		<logger level="INFO" doc:name="Logger" doc:id="dadbd271-7cb3-4999-89f8-2580861a258a" message="final "/>
+	</flow>
+	<flow name="guarantee-delivery-2Flow1" doc:id="302da615-0c36-45c0-b92d-e696baf398fc" >
+		<jms:listener doc:name="On New Message" doc:id="a7777f75-1120-4d44-a0cb-3cdb2f048e48" config-ref="JMS_Config" destination="gd">
+			<jms:consumer-type >
+				<jms:queue-consumer />
+			</jms:consumer-type>
+		</jms:listener>
+		<logger level="INFO" doc:name="Logger" doc:id="f8adf0df-3f77-47a6-87f8-caa1c474afcd" message="before request"/>
+		<try doc:name="Try" doc:id="d40a4e9d-6750-499d-8c73-62e43f665146" >
+			<http:request method="POST" doc:name="Request" doc:id="d9b9fb55-1cb9-4762-bfab-88985aaed252" url="http://localhost:8082/hgd" />
+			<error-handler >
+				<on-error-propagate enableNotifications="true" logException="true" doc:name="On Error Propagate" doc:id="7447d080-b55f-48f1-9815-9be152c6c78a" type="ANY">
+					<os:store doc:name="Store" doc:id="77371856-b69c-4704-8b7d-1fe5647c0498" key='#[now() as String{format:"KK:mm:ss a"}]' objectStore="Object_store"/>
+				</on-error-propagate>
+			</error-handler>
+		</try>
+	</flow>
+	<flow name="guarantee-delivery-2Flow3" doc:id="a796274a-bfae-4730-bf2a-ba3e85592a71" >
+		<http:listener doc:name="Listener" doc:id="3255cf7c-6380-4374-ac62-3bd20ca3d8b3" config-ref="HTTP_Listener_config" path="/retrieve"/>
+		<os:retrieve-all-keys doc:name="Retrieve all keys" doc:id="b3d4f859-6272-4b35-b730-7d422f9b2fa5" objectStore="Object_store"/>
+		<foreach doc:name="For Each" doc:id="8843c1ef-3253-4557-8d1b-7a25ae486847" >
+			<set-variable value="#[payload]" doc:name="Set Variable" doc:id="669cb47f-750c-43af-b5a4-ebe08548cc7c" variableName="key"/>
+			<os:retrieve doc:name="Retrieve" doc:id="440f279b-0a5f-4d82-87ae-59a95cb2724b" key="#[vars.key]" objectStore="Object_store"/>
+			<logger level="INFO" doc:name="Logger" doc:id="40763557-bc1c-4ab9-9341-64b48b5178e4" message='#[read(payload) ++ {"present":now()as String{format:"KK:mm:ss a"}}]'/>
+			<os:remove doc:name="Remove" doc:id="da03780d-4e67-48d1-b372-bbb6f5fbd938" key="#[vars.key]" objectStore="Object_store"/>
+		</foreach>
+		<logger level="INFO" doc:name="Logger" doc:id="6df5af14-617e-4178-895a-08dea4af6e93" message="#[payload]"/>
+	</flow>
+</mule>

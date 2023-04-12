@@ -1,0 +1,50 @@
+<?xml version="1.0" encoding="UTF-8"?>
+
+<mule xmlns:ee="http://www.mulesoft.org/schema/mule/ee/core" xmlns:file="http://www.mulesoft.org/schema/mule/file"
+	xmlns:jms="http://www.mulesoft.org/schema/mule/jms"
+	xmlns:http="http://www.mulesoft.org/schema/mule/http" xmlns="http://www.mulesoft.org/schema/mule/core" xmlns:doc="http://www.mulesoft.org/schema/mule/documentation" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="http://www.mulesoft.org/schema/mule/core http://www.mulesoft.org/schema/mule/core/current/mule.xsd
+http://www.mulesoft.org/schema/mule/http http://www.mulesoft.org/schema/mule/http/current/mule-http.xsd
+http://www.mulesoft.org/schema/mule/jms http://www.mulesoft.org/schema/mule/jms/current/mule-jms.xsd
+http://www.mulesoft.org/schema/mule/file http://www.mulesoft.org/schema/mule/file/current/mule-file.xsd
+http://www.mulesoft.org/schema/mule/ee/core http://www.mulesoft.org/schema/mule/ee/core/current/mule-ee.xsd">
+	<flow name="persistent-guarantee-deliveryFlow" doc:id="e5505ab5-f7f3-45b0-aac2-a2b526a39577" >
+		<http:listener doc:name="Listener" doc:id="c596f165-bab1-475b-a2fe-af24f9f13921" config-ref="HTTP_Listener_config" path="/gen"/>
+		<jms:publish doc:name="Publish" doc:id="ed1e621e-88f8-444e-b76c-b3b5e4a932e2" config-ref="JMS_Config" destination="ps" persistentDelivery="true" timeToLive="1" timeToLiveUnit="DAYS"/>
+		<logger level="INFO" doc:name="Logger" doc:id="d7376ac1-f848-4b39-a259-26836c36e00e" message='#[now() as String{format:"KK:mm:ss a"}]'/>
+	</flow>
+	<flow name="persistent-guarantee-deliveryFlow2" doc:id="dc23b881-d28a-45ad-8e4e-bda3814709d2" >
+		<http:listener doc:name="Listener" doc:id="a26bcf73-05df-4738-a96d-396e7c7a56b8" config-ref="HTTP_Listener_config" path="/file"/>
+		<logger level="INFO" doc:name="Logger" doc:id="1783ccb3-ee84-41e1-80dd-333f760508ee" message="#[payload]"/>
+		<set-variable value='#[now() as String{format:"yyyyMMddHHMMSS"}]' doc:name="Set Variable" doc:id="d20c7d0b-1cf7-47a6-b3a5-26bf7b2bb3a3" variableName="fileName"/>
+		<file:write doc:name="Write" doc:id="d046d699-fc42-4278-aa47-e0564c2fdfff" path='#["D:\\" ++ vars.fileName]'/>
+		<logger level="INFO" doc:name="Logger" doc:id="49b9f115-6089-412c-91be-ba098ddfdd20" message="process-completed"/>
+	</flow>
+	<flow name="persistent-guarantee-deliveryFlow1" doc:id="14786e74-d918-4a38-b9e1-d882964b0546" >
+		<jms:listener doc:name="On New Message" doc:id="cfdf499c-7def-4b04-8065-47d50869f875" config-ref="JMS_Config" destination="ps">
+			<jms:consumer-type >
+				<jms:queue-consumer />
+			</jms:consumer-type>
+		</jms:listener>
+		<logger level="INFO" doc:name="Logger" doc:id="9a23b2a0-ff34-49ce-85a2-fc83cae1d611" message="message dequeed"/>
+		<http:request method="POST" doc:name="Request" doc:id="8011cd9c-33dc-405a-b86e-d0f10eaa16fc" url="http://localhost:8082/file"/>
+		<ee:transform doc:name="explination" doc:id="d92c0b65-6d9a-44ca-a044-0e753cfbb2ba" >
+			<ee:message >
+				<ee:set-payload ><![CDATA[%dw 2.0
+output application/json
+---
+"if you dont keep persist true in publish,if request is failed we cant get the msg in file again,
+keep persist true,if request is faile, a DLQ will formed with that published msg,
+you can retrieve it by keping on-new-msg or consumer"]]></ee:set-payload>
+			</ee:message>
+		</ee:transform>
+	</flow>
+	<flow name="persistent-guarantee-deliveryFlow3" doc:id="2296e27a-cf32-48cd-b80a-9134732cb0b5" >
+		<http:listener doc:name="Listener" doc:id="02146cdc-1d32-4a31-b54e-e3e51d8fc827" config-ref="HTTP_Listener_config" path="/reprocess"/>
+		<jms:consume doc:name="Consume" doc:id="232d6975-4db1-4866-8fcc-07ebc253efc9" config-ref="JMS_Config" destination="ActiveMQ.DLQ">
+			<jms:consumer-type >
+				<jms:queue-consumer />
+			</jms:consumer-type>
+		</jms:consume>
+		<logger level="INFO" doc:name="Logger" doc:id="9e4c5169-5d34-4e89-a145-8d080d2cdd4c" message='#["reprocessed message" ++ payload]'/>
+	</flow>
+</mule>

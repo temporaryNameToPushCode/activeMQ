@@ -1,0 +1,33 @@
+<?xml version="1.0" encoding="UTF-8"?>
+
+<mule xmlns:ee="http://www.mulesoft.org/schema/mule/ee/core" xmlns:jms="http://www.mulesoft.org/schema/mule/jms"
+	xmlns:http="http://www.mulesoft.org/schema/mule/http"
+	xmlns="http://www.mulesoft.org/schema/mule/core" xmlns:doc="http://www.mulesoft.org/schema/mule/documentation" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="http://www.mulesoft.org/schema/mule/core http://www.mulesoft.org/schema/mule/core/current/mule.xsd
+http://www.mulesoft.org/schema/mule/http http://www.mulesoft.org/schema/mule/http/current/mule-http.xsd
+http://www.mulesoft.org/schema/mule/jms http://www.mulesoft.org/schema/mule/jms/current/mule-jms.xsd
+http://www.mulesoft.org/schema/mule/ee/core http://www.mulesoft.org/schema/mule/ee/core/current/mule-ee.xsd">
+	<jms:config name="JMS_Config1" doc:name="JMS Config" doc:id="f9c046ae-06be-4b91-b427-a0b5464e1f74" >
+		<jms:active-mq-connection username="admingvgvj" password="admin123" >
+			<jms:factory-configuration brokerUrl="tcp://locaost:61616" />
+		</jms:active-mq-connection>
+	</jms:config>
+	<flow name="handling-transactionsFlow" doc:id="4a99b689-70f2-435e-a709-357bfee02bf1" >
+		<http:listener doc:name="Listener" doc:id="2107714c-568f-4018-bd10-4d9e2ef03431" config-ref="HTTP_Listener_config" path="/ht"/>
+		<try doc:name="Try" doc:id="c111cbd0-1d9e-49bc-9288-9572e5dc6e87" transactionalAction="ALWAYS_BEGIN">
+			<jms:publish doc:name="Publish" doc:id="87d69a14-b9cd-4079-a717-abd4ea2264f1" config-ref="JMS_Config" destination="ht1"/>
+			<jms:publish doc:name="Publish" doc:id="cede2c83-3029-4582-bc28-2e353607ab5c" config-ref="JMS_Config1" destination="ht2"/>
+		</try>
+		<ee:transform doc:name="Transform Message" doc:id="48a94982-cace-4af7-8edc-90ff053fa1e9" >
+			<ee:message >
+				<ee:set-payload ><![CDATA[%dw 2.0
+output application/json
+---
+"keep 1 publish credentials correct and other wrong,u will get one success and other not,
+if you keep try and keep ALWAYS-BEGIN than both will not execute"
+
+]]></ee:set-payload>
+			</ee:message>
+		</ee:transform>
+		<logger level="INFO" doc:name="Logger" doc:id="3db6ba2a-bd5b-490f-9010-7dc01c4b22b8" message="processing completed"/>
+	</flow>
+</mule>

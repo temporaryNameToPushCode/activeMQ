@@ -1,0 +1,14 @@
+<?xml version="1.0" encoding="UTF-8"?>
+
+<mule xmlns:jms="http://www.mulesoft.org/schema/mule/jms" xmlns:http="http://www.mulesoft.org/schema/mule/http"
+	xmlns="http://www.mulesoft.org/schema/mule/core"
+	xmlns:doc="http://www.mulesoft.org/schema/mule/documentation" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="http://www.mulesoft.org/schema/mule/core http://www.mulesoft.org/schema/mule/core/current/mule.xsd
+http://www.mulesoft.org/schema/mule/http http://www.mulesoft.org/schema/mule/http/current/mule-http.xsd
+http://www.mulesoft.org/schema/mule/jms http://www.mulesoft.org/schema/mule/jms/current/mule-jms.xsd">
+	<flow name="untill-succesfullFlow" doc:id="a58c70d0-a57a-4d4a-99e9-47cc55a2c84c" >
+		<http:listener doc:name="Listener" doc:id="af3c539c-7a6d-4f4a-803c-5764b9f93ac4" config-ref="HTTP_Listener_config" path="/untill-succesfull"/>
+		<until-successful maxRetries="5" doc:name="Until Successful" doc:id="0673ef02-e90d-4ff3-bdea-9e8785bbfc80">
+			<jms:publish doc:name="Publish" doc:id="e068815e-b94b-4a91-93c7-44897b2f4eed" config-ref="JMS_Config" destination="untill-succesfull" />
+		</until-successful>
+	</flow>
+</mule>

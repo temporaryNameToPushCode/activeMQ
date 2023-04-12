@@ -1,0 +1,32 @@
+<?xml version="1.0" encoding="UTF-8"?>
+
+<mule xmlns:jms="http://www.mulesoft.org/schema/mule/jms" xmlns:http="http://www.mulesoft.org/schema/mule/http"
+	xmlns="http://www.mulesoft.org/schema/mule/core"
+	xmlns:doc="http://www.mulesoft.org/schema/mule/documentation" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="http://www.mulesoft.org/schema/mule/core http://www.mulesoft.org/schema/mule/core/current/mule.xsd
+http://www.mulesoft.org/schema/mule/http http://www.mulesoft.org/schema/mule/http/current/mule-http.xsd
+http://www.mulesoft.org/schema/mule/jms http://www.mulesoft.org/schema/mule/jms/current/mule-jms.xsd">
+	<flow name="Priority_from_high_TO_lowFlow" doc:id="85da2a06-4eb0-404e-b507-387d1fc1ee77" >
+		<http:listener doc:name="Listener" doc:id="472b81ce-0b4a-4522-8251-c0e0a5cf3fa8" config-ref="HTTP_Listener_config" path="/pr"/>
+		<set-variable value='#[%dw 2.0&#10;output application/json&#10;---&#10;if((read(payload,"application/json").age) &gt; 45) 8 else 4]' doc:name="Set Variable" doc:id="f6bbe97e-02e8-40bc-ae5d-705e9e1a4dc9" variableName="priority"/>
+		<set-payload value="#[%dw 2.0&#10;output application/json&#10;---&#10;vars.priority]" doc:name="Set Payload" doc:id="06ae0dd2-4c53-4d19-8196-cd615303b716" />
+		<jms:publish doc:name="Publish" doc:id="2233c940-4a87-437e-869d-99083e05ae3c" config-ref="JMS_Config" destination="PR" destinationType="TOPIC" priority="#[vars.priority]"/>
+	</flow>
+	<flow name="Priority_from_high_TO_lowFlow1" doc:id="8c2ce64a-66d7-41e5-8b39-f7f12eb4cf61" >
+		<jms:listener doc:name="On New Message" doc:id="b9d0db64-6f45-40fe-aa8a-cb0a0c518137" config-ref="JMS_Config" destination="PR" selector="JMSPriority=8" numberOfConsumers="1">
+			<jms:consumer-type >
+				<jms:topic-consumer />
+			</jms:consumer-type>
+			<jms:response persistentDelivery="true"/>
+		</jms:listener>
+		<logger level="INFO" doc:name="Logger" doc:id="eb07c3e1-a221-47ca-a369-e57bebaf2bda" message="HIgh Priority :: #[payload]"/>
+	</flow>
+	<flow name="Priority_from_high_TO_lowFlow2" doc:id="c5b06e55-a202-4c39-b329-488099d4ee24" >
+		<jms:listener doc:name="On New Message" doc:id="0f2b4526-f2a9-4ce5-a4db-ba1309bc5ece" config-ref="JMS_Config" destination="PR" selector="JMSPriority=5" numberOfConsumers="1">
+			<jms:consumer-type >
+				<jms:topic-consumer />
+			</jms:consumer-type>
+			<jms:response deliveryDelay="1" deliveryDelayUnit="MINUTES" />
+		</jms:listener>
+		<logger level="INFO" doc:name="Logger" doc:id="55cf9dfd-cfe0-4b82-b503-87c338458b61" message="low priority :: #[payload]"/>
+	</flow>
+</mule>

@@ -1,0 +1,160 @@
+<?xml version="1.0" encoding="UTF-8"?>
+
+<mule xmlns:jms="http://www.mulesoft.org/schema/mule/jms" xmlns:ee="http://www.mulesoft.org/schema/mule/ee/core"
+	xmlns:http="http://www.mulesoft.org/schema/mule/http"
+	xmlns="http://www.mulesoft.org/schema/mule/core" xmlns:doc="http://www.mulesoft.org/schema/mule/documentation" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="http://www.mulesoft.org/schema/mule/core http://www.mulesoft.org/schema/mule/core/current/mule.xsd
+http://www.mulesoft.org/schema/mule/http http://www.mulesoft.org/schema/mule/http/current/mule-http.xsd
+http://www.mulesoft.org/schema/mule/ee/core http://www.mulesoft.org/schema/mule/ee/core/current/mule-ee.xsd
+http://www.mulesoft.org/schema/mule/jms http://www.mulesoft.org/schema/mule/jms/current/mule-jms.xsd">
+	<http:listener-config name="HTTP_Listener_config" doc:name="HTTP Listener config" doc:id="39b1afbf-e1bc-4059-a8d7-55c5f133b47e" >
+		<http:listener-connection host="0.0.0.0" port="8081" />
+	</http:listener-config>
+	<jms:config name="JMS_Config" doc:name="JMS Config" doc:id="6f845f1d-cc76-4ad2-a2a2-7ee823b1fb48" >
+		<jms:active-mq-connection username="admin" password="admin" clientId="aypr">
+			<jms:factory-configuration brokerUrl="tcp://localhost:61616" />
+		</jms:active-mq-connection>
+	</jms:config>
+	<flow name="PUBLISHING-TO-QUEUE(demo-queue)" doc:id="3e22bdd0-0626-42c2-83b3-2580240be731" >
+		<http:listener doc:name="Listener" doc:id="3c3dbb92-e006-458a-93f0-6d73b2d5fa79" config-ref="HTTP_Listener_config" path="/demo"/>
+		<jms:publish doc:name="Publish" doc:id="9c298fff-2ce8-405e-9c5c-e76b0386a593" config-ref="JMS_Config" destination="demo-queue" persistentDelivery="true"/>
+		<ee:transform doc:name="Transform Message" doc:id="35b6662a-da89-4cdc-9b70-192379187645" >
+			<ee:message >
+				<ee:set-payload ><![CDATA[%dw 2.0
+output application/json
+---
+"published succesfully"]]></ee:set-payload>
+			</ee:message>
+		</ee:transform>
+	</flow>
+	<flow name="CONSUMING-MSG-FROM-demo-queue" doc:id="767add18-9383-4880-9487-bb26fccc605e" >
+		<http:listener doc:name="Listener" doc:id="fc07cf00-9a3c-4dfa-b893-78d0bd5fd5b5" config-ref="HTTP_Listener_config" path="/consume"/>
+		<jms:consume doc:name="Consume" doc:id="7f7c87c5-0590-4927-9015-854a22263742" config-ref="JMS_Config" destination="demo-queue">
+			<jms:consumer-type >
+				<jms:queue-consumer />
+			</jms:consumer-type>
+		</jms:consume>
+		<ee:transform doc:name="Transform Message" doc:id="f107f15e-5ba8-4b99-9cbd-3e3dfc482901" >
+			<ee:message >
+				<ee:set-payload ><![CDATA[%dw 2.0
+output application/json
+---
+payload]]></ee:set-payload>
+			</ee:message>
+		</ee:transform>
+	</flow>
+	<flow name="CREATING-MSG-ON-actMQ(sampleQ)" doc:id="7a5fce16-d218-48fe-a625-82c3d4c202d6" >
+		<jms:listener doc:name="On New Message" doc:id="1f6d564d-7bf7-402a-953a-565e05efca26" config-ref="JMS_Config" destination="sampleQ" numberOfConsumers="1">
+			<jms:consumer-type >
+				<jms:queue-consumer />
+			</jms:consumer-type>
+			<jms:response persistentDelivery="true">
+				<jms:reply-to destination="sampleQ" />
+			</jms:response>
+		</jms:listener>
+		<ee:transform doc:name="Transform Message" doc:id="1ea3a1b5-14f1-4d5b-b522-4eaa3c95736d" >
+			<ee:message >
+				<ee:set-payload ><![CDATA[%dw 2.0
+output application/json
+---
+payload]]></ee:set-payload>
+			</ee:message>
+		</ee:transform>
+		<logger level="INFO" doc:name="Logger" doc:id="096e545f-c237-4a15-a10f-5311d288299e" message="#[payload]"/>
+	</flow>
+	<flow name="PUBLISHING-MSG-TO-TOPIC(sampleT)" doc:id="12c2152d-c1d2-418c-a3fe-864c0c36e041" >
+		<http:listener doc:name="Listener" doc:id="27e1b81c-ed0b-436a-adc2-687df630ff6f" config-ref="HTTP_Listener_config" path="/topic"/>
+		<jms:publish doc:name="Publish" doc:id="a45f0bd2-6542-46c9-bd68-d4de6ff3a9d4" config-ref="JMS_Config" destination="sampleT" destinationType="TOPIC">
+			<jms:message outboundContentType="application/json" />
+		</jms:publish>
+		<ee:transform doc:name="Transform Message" doc:id="3d73fe2e-7f95-4d93-bb9a-0c659eae35ac" >
+			<ee:message >
+				<ee:set-payload ><![CDATA[%dw 2.0
+output application/json
+---
+"published to Topic succesfully"]]></ee:set-payload>
+			</ee:message>
+		</ee:transform>
+	</flow>
+	<flow name="CONSUMING-MSG-FROM-TOPIC(sampleT)" doc:id="431ebfb7-e36b-4725-bf2f-ec86a8a0967d" >
+		<http:listener doc:name="Listener" doc:id="ec309227-44ed-41ef-9482-be64210d312d" config-ref="HTTP_Listener_config" path="/Tconsume"/>
+		<jms:consume doc:name="Consume" doc:id="acef10c8-4f0b-472d-93ea-84539c045903" config-ref="JMS_Config" destination="sampleT" contentType="application/json">
+			<jms:consumer-type >
+				<jms:topic-consumer />
+			</jms:consumer-type>
+		</jms:consume>
+		<ee:transform doc:name="Transform Message" doc:id="04900a3f-2477-49ae-9ad6-1853e00e7d53" >
+			<ee:message >
+				<ee:set-payload ><![CDATA[%dw 2.0
+output application/json
+---
+payload]]></ee:set-payload>
+			</ee:message>
+		</ee:transform>
+	</flow>
+	<flow name="PUBLISHING-TO-TOPIC(demoT)" doc:id="246e2a2e-2770-4b0d-be4f-90a026901ddf" >
+		<http:listener doc:name="Listener" doc:id="98031876-77dc-4f9c-b63a-ef4f4b4522ad" config-ref="HTTP_Listener_config" path="/ms"/>
+		<jms:publish doc:name="Publish" doc:id="f802dbc0-409c-43dc-a632-90124689f3b8" config-ref="JMS_Config" destination="demoT" destinationType="TOPIC"/>
+		<ee:transform doc:name="Transform Message" doc:id="80cfba54-ca8f-40ec-a443-bf4929eda62d" >
+			<ee:message >
+				<ee:set-payload ><![CDATA[%dw 2.0
+output application/json
+---
+"published to topic succesfully"]]></ee:set-payload>
+			</ee:message>
+		</ee:transform>
+	</flow>
+	<flow name="CONSUMER1-FROM-demoT" doc:id="c6c8dff9-7a56-4772-bc7d-773281d344a2" >
+		<jms:listener doc:name="On New Message" doc:id="cc136be8-175c-4c9a-b0fc-3913d5cad5f9" config-ref="JMS_Config" destination="demoT" numberOfConsumers="1">
+			<jms:consumer-type >
+				<jms:topic-consumer />
+			</jms:consumer-type>
+		</jms:listener>
+		<logger level="INFO" doc:name="Logger" doc:id="1accdd4b-9c5b-49de-b6a2-8d1396308161" message='#["message1 ;; " ++ write(payload)]'/>
+	</flow>
+	<flow name="CONSUMER2-FROM-demoT" doc:id="b505a200-5ef9-4c4d-b23f-9e9e21c40afc" >
+		<jms:listener doc:name="On New Message" doc:id="f2b10731-1d94-431b-9cfd-f295e160fef7" config-ref="JMS_Config" destination="demoT" numberOfConsumers="1">
+			<jms:consumer-type >
+				<jms:topic-consumer />
+			</jms:consumer-type>
+		</jms:listener>
+		<logger level="INFO" doc:name="Logger" doc:id="95b4b305-712b-40f9-9f6f-857f24f51b6b" message='#["message2: " ++ write(payload)]'/>
+	</flow>
+	<flow name="ACK-TEST" doc:id="42d49197-1edb-4066-b42d-5543c0951fa5" >
+		<jms:listener doc:name="On New Message" doc:id="6493df6a-c268-411b-828c-47f82d87927c" config-ref="JMS_Config" destination="ackDemo" ackMode="MANUAL">
+			<jms:consumer-type >
+				<jms:queue-consumer />
+			</jms:consumer-type>
+		</jms:listener>
+		<logger level="INFO" doc:name="Logger" doc:id="14ad908c-5009-4fdc-ac6d-a9b26420e40d" message="before ack"/>
+		<jms:ack doc:name="Ack" doc:id="c439a1f8-6f0a-42ae-bb6c-77e0f4752dd5" ackId="#[attributes.ackId]"/>
+		<logger level="INFO" doc:name="Logger" doc:id="1d1e42c6-a546-44af-b462-8ea66ecc3437" message="afterACK"/>
+	</flow>
+	<flow name="PUBLISH-CONSUME" doc:id="9f8d8b72-f667-47da-9c3c-c4e0870f0ce1" >
+		<http:listener doc:name="Listener" doc:id="c4bd60a8-b94e-4fb0-97b4-33a650daf765" config-ref="HTTP_Listener_config" path="/pc"/>
+		<jms:publish-consume doc:name="Publish consume" doc:id="636bf329-93da-493a-a4a1-8e1b9f71da49" config-ref="JMS_Config" destination="request">
+			<jms:message >
+				<jms:reply-to destination="reply" />
+			</jms:message>
+			<jms:consume-configuration maximumWait="10" maximumWaitUnit="MINUTES" />
+		</jms:publish-consume>
+		<logger level="INFO" doc:name="Logger" doc:id="ec92220e-1476-4c2e-a2ff-df3062a0eed9" message="publish-consume"/>
+	</flow>
+	<flow name="CONSUMING-PUBLISHED-FROM-PUBLISH-CONSUME" doc:id="32d2aaf7-a65b-4144-9410-30c579bd3f8c" >
+		<jms:listener doc:name="On New Message" doc:id="b30e1ddd-9d21-4ed6-8735-0fd5c9246870" config-ref="JMS_Config" destination="request">
+			<jms:consumer-type >
+				<jms:queue-consumer />
+			</jms:consumer-type>
+		</jms:listener>
+		<logger level="INFO" doc:name="Logger" doc:id="fd2b85b5-ff5f-4884-b43f-04b23b7c962a" message="final"/>
+	</flow>
+	<flow name="SELECTOR-JMSPriority" doc:id="a1e959c9-1809-442b-acda-8c778d0eeb92" >
+		<jms:listener doc:name="On New Message" doc:id="c9a3193e-0ff2-458d-813e-a3aeb84518a1" config-ref="JMS_Config" destination="PRIORITY" selector="JMSPriority=8">
+			<jms:consumer-type >
+				<jms:queue-consumer />
+			</jms:consumer-type>
+			<jms:response priority="8" />
+		</jms:listener>
+		<logger level="INFO" doc:name="Logger" doc:id="d962bfdc-f494-41e6-9c89-112ee1ff685e" message="jms-priority"/>
+	</flow>
+	
+</mule>
